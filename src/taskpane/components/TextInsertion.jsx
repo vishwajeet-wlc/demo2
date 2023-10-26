@@ -1,7 +1,9 @@
 import * as React from "react";
 import { useState } from "react";
 import { Button, Field, Textarea, tokens, makeStyles } from "@fluentui/react-components";
-import insertText from "../office-document";
+// import { getMicrosoftAccessToken } from "./file.js";
+
+/* global window */
 
 const useStyles = makeStyles({
   instructions: {
@@ -27,16 +29,13 @@ const TextInsertion = () => {
   const [text, setText] = useState("Some text.");
 
   const handleTextInsertion = async () => {
-    
-    await insertText(text);
+    // const token = await getMicrosoftAccessToken("6f067864-af43-4c81-be6b-cd09a97314d3");
   };
-
   const handleTextChange = async (event) => {
     setText(event.target.value);
   };
 
   const styles = useStyles();
-
   return (
     <div className={styles.textPromptAndInsertion}>
       <Field className={styles.textAreaField} size="large" label="Enter text to be inserted into the document.">
@@ -44,7 +43,7 @@ const TextInsertion = () => {
       </Field>
       <Field className={styles.instructions}>Click the button to insert text.</Field>
       <Button appearance="primary" disabled={false} size="large" onClick={handleTextInsertion}>
-        Insert text
+        Get Token
       </Button>
     </div>
   );
