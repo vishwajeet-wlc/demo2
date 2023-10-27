@@ -1,3 +1,4 @@
+/* global window */
 import React, { useEffect } from "react";
 import { Button, Image, tokens, makeStyles } from "@fluentui/react-components";
 import logo from "/assets/logo-filled.png";
@@ -6,7 +7,8 @@ import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
 import { setTokenData } from "../../app/authSlice";
 import { setOfficeKeyValue, officeKeys } from "../../config/utility";
-/* global window */
+import { setAlertMessage } from "../../app/loaderSlice";
+
 const useStyles = makeStyles({
   root: {
     minHeight: "75vh",
@@ -15,7 +17,6 @@ const useStyles = makeStyles({
     alignItems: "center",
     paddingBottom: "30px",
     paddingTop: "100px",
-    gap: "30px",
     backgroundColor: tokens.colorNeutralBackground3,
   },
 });
@@ -31,9 +32,10 @@ export default function AuthorizationUI({ setRefreshToken }) {
         setOfficeKeyValue(officeKeys.refreshToken, tokenData.refreshToken);
         setRefreshToken(tokenData.refreshToken);
         dispatchToRedux(setTokenData(tokenData));
+        dispatchToRedux(setAlertMessage({ message: "Authorized successfully.", intent: "success" }));
       }
     } catch (error) {
-      console.log(error);
+      dispatchToRedux(setAlertMessage({ message: error.message, intent: "error" }));
     }
   }
 

@@ -1,10 +1,46 @@
+/* global Office, fetch */
 import React, { useState, useEffect } from "react";
 import Dropdown from "./Dropdown.jsx";
 import RequestStatus from "./RequestStatus.jsx";
 import { setOfficeKeyValue, getOfficeKeyValue, officeKeys } from "../../config/utility.js";
-import { useSelector } from "react-redux";
-/* global Office, alert, fetch */
+import { useDispatch, useSelector } from "react-redux";
+import { Text, Label, Button, makeStyles, Input } from "@fluentui/react-components";
+import { setAlertMessage, setLoading } from "../../app/loaderSlice.js";
 
+const useStyles = makeStyles({
+  root: {
+    minHeight: "100vh",
+    minWidth: "100vw",
+    position: "fixed",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    top: "0px",
+    left: "0px",
+    zIndex: "1000",
+  },
+  form: {
+    width: "80%",
+    display: "flex",
+    flexDirection: "column",
+  },
+  input: {
+    marginTop: "10px",
+  },
+  button: {
+    marginTop: "20px",
+    width: "50%",
+  },
+  title: {
+    fontSize: "18px",
+    marginBottom: "15px",
+    marginTop: "10px",
+  },
+  label: {
+    marginBottom: "2px",
+    marginTop: "15px",
+  },
+});
 function TokenUI() {
   const [clientToken, setClientToken] = useState("");
   const [clientDomain, setClientDomain] = useState("");
@@ -12,6 +48,8 @@ function TokenUI() {
   const [formTypes, setFormTypes] = useState([]);
   const [reqId, setReqId] = useState("");
   const authData = useSelector((state) => state.auth);
+  const classes = useStyles();
+  const dispatchToRedux = useDispatch();
 
   useEffect(() => {
     const conversation = Office.context?.mailbox.initialData.conversationId;
@@ -34,50 +72,90 @@ function TokenUI() {
   async function saveStreamlineSettings(e) {
     e.preventDefault();
     if (!clientToken || !clientDomain) {
-      return alert("Failed: Client token and domain both are required");
+      return dispatchToRedux(
+        setAlertMessage({ message: "client token and domain both are required", intent: "warning" })
+      );
     }
 
-    const options = {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authData.accessToken}`,
-      },
-      body: JSON.stringify({
-        clientToken,
-        clientDomain,
-      }),
-    };
-    const response = await fetch(`${clientDomain}/api/outlook/validate`, options);
+    try {
+      dispatchToRedux(setLoading(true));
+      const options = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authData.accessToken}`,
+        },
+        body: JSON.stringify({
+          clientToken,
+          clientDomain,
+        }),
+      };
+      const response = await fetch(`${clientDomain}/api/outlook/validate`, options);
 
-    if (response.status === 400) {
-      return alert("Failed: Invalid Client Token.");
+      if (response.status === 400) {
+        return dispatchToRedux(setAlertMessage({ message: "Invalid Client Token.", intent: "error" }));
+      }
+
+      if (response.status === 401) {
+        return dispatchToRedux(
+          setAlertMessage({
+            message: "Please sign in to Streamline using your Google account to continue.",
+            intent: "error",
+          })
+        );
+      }
+
+      if (response.status !== 204) {
+        return dispatchToRedux(
+          setAlertMessage({ message: "Please check the client token and domain.", intent: "error" })
+        );
+      }
+
+      setOfficeKeyValue(officeKeys.clientToken, clientToken);
+      setOfficeKeyValue(officeKeys.clientDomain, clientDomain);
+      await fetchAndSaveStreamlineForms(clientDomain, clientToken.split(".").pop());
+      setAuth(true);
+      dispatchToRedux(setLoading(false));
+      dispatchToRedux(setAlertMessage({ message: "Saved successfully.", intent: "success" }));
+    } catch (error) {
+      dispatchToRedux(setLoading(false));
+      return dispatchToRedux(setAlertMessage({ message: error.message, intent: "error" }));
     }
-
-    if (response.status === 401) {
-      return alert("Failed: Please sign in to Streamline using your Google account to continue.");
-    }
-
-    if (response.status !== 204) {
-      return alert("Failed: Please check the client token and domain.");
-    }
-
-    setOfficeKeyValue(officeKeys.clientToken, clientToken);
-    setOfficeKeyValue(officeKeys.clientDomain, clientDomain);
-    await fetchAndSaveStreamlineForms(clientDomain, clientToken.split(".").pop());
-    setAuth(true);
   }
 
   async function fetchAndSaveStreamlineForms(clientDomain, orgId) {
-    const response = await fetch(`${clientDomain}/api/outlook/request-forms/${orgId}`, {
-      headers: {
-        Authorization: `Bearer ${authData.accessToken}`,
-      },
-    });
-    const formData = await response.json();
-    setFormTypes([...formData]);
-    if (response.status === 400) {
-      return alert("Failed: Ensure integration is enabled and log in with your Google account in Streamline.");
+    try {
+      dispatchToRedux(setLoading(true));
+      const response = await fetch(`${clientDomain}/api/outlook/request-forms/${orgId}`, {
+        headers: {
+          Authorization: `Bearer ${authData.accessToken}`,
+        },
+      });
+      const formData = await response.json();
+      setFormTypes([...formData]);
+
+      if (response.status === 400) {
+        return dispatchToRedux(
+          setAlertMessage({
+            message: "Ensure integration is enabled and log in with your microsoft account in Streamline.",
+            intent: "error",
+          })
+        );
+      }
+
+      if (response.status === 401) {
+        return dispatchToRedux(
+          setAlertMessage({
+            message: "Please sign in to Streamline using your Google account to continue.",
+            intent: "error",
+          })
+        );
+      }
+      dispatchToRedux(setLoading(false));
+      dispatchToRedux(setAlertMessage({ message: "Streamline form fetched successfully.", intent: "success" }));
+    } catch (error) {
+      dispatchToRedux(setLoading(false));
+      return dispatchToRedux(setAlertMessage({ message: error.message, intent: "error" }));
     }
   }
 
@@ -91,97 +169,39 @@ function TokenUI() {
         </>
       ) : (
         <>
-          <p
-            style={{
-              fontWeight: "bold",
-              fontFamily: "sans-serif",
-              fontSize: "20px",
-              padding: "10px",
-              border: "1px solid #ccc",
-              width: "100%",
-            }}
-          >
-            Setup access with streamline
-          </p>
-          <form>
-            <label
-              style={{
-                marginTop: "10px",
-                paddingLeft: "5%",
-                fontSize: "18px",
-                width: "80%",
-                fontFamily: "sans-serif",
-              }}
-            >
-              Client Token
-            </label>
-            <br />
-            <input
-              placeholder="Client Token"
-              style={{
-                marginTop: "10px",
-                marginLeft: "5%",
-                marginRight: "5%",
-                width: "80%",
-                border: "1px solid #eee",
-                borderRadius: "2px",
-                fontSize: "14px",
-                padding: "10px 10px",
-              }}
-              onChange={(e) => {
-                setClientToken(e.target.value);
-              }}
-            />{" "}
-            <br />
-            <div style={{ marginTop: "20px" }}>
-              <label
-                style={{
-                  marginTop: "10px",
-                  paddingLeft: "5%",
-                  fontSize: "18px",
-                  width: "80%",
-                  fontFamily: "sans-serif",
+          <div className={classes.root}>
+            <Text className={classes.title} variant="large" weight="bold">
+              Setup access with streamline
+            </Text>
+            <form className={classes.form}>
+              <Label className={classes.label} htmlFor="client-token">
+                {" "}
+                Client Token{" "}
+              </Label>
+              <Input
+                id="client-token"
+                placeholder="Client Token"
+                className={classes.input}
+                onChange={(e) => {
+                  setClientToken(e.target.value);
                 }}
-              >
+              />
+              <Label className={classes.label} htmlFor="domain-name">
                 Domain Name
-              </label>{" "}
-              <br />
-              <input
+              </Label>
+              <Input
+                id="domain-name"
                 placeholder="Streamline Domain"
+                className={classes.input}
                 onChange={(e) => {
                   setClientDomain(e.target.value);
                 }}
-                style={{
-                  marginTop: "10px",
-                  marginLeft: "5%",
-                  marginRight: "5%",
-                  width: "80%",
-                  border: "1px solid #eee",
-                  borderRadius: "2px",
-                  fontSize: "14px",
-                  padding: "10px",
-                }}
               />
-            </div>
-            <button
-              style={{
-                marginLeft: "10px",
-                width: "50%",
-                marginTop: "10px",
-                backgroundColor: "white",
-                border: "1px solid #ccc",
-                fontSize: "16px",
-                borderRadius: "2px",
-                padding: "10px 0px",
-                cursor: "pointer",
-              }}
-              onClick={(e) => {
-                saveStreamlineSettings(e);
-              }}
-            >
-              Save Settings
-            </button>
-          </form>
+              <Button appearance="primary" className={classes.button} onClick={saveStreamlineSettings}>
+                Save Settings
+              </Button>
+            </form>
+          </div>
         </>
       )}
     </>

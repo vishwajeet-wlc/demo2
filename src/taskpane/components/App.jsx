@@ -1,16 +1,15 @@
 import * as React from "react";
 import PropTypes from "prop-types";
-// import Header from "./Header";
-// import HeroList from "./HeroList";
-// import TextInsertion from "./TextInsertion";
 import { makeStyles } from "@fluentui/react-components";
-// import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
 import { officeKeys, getOfficeKeyValue } from "../../config/utility.js";
 import AuthorizationUI from "./AuthorizationUI";
 import TokenUI from "./TokenUI";
 import { refreshAccessToken } from "../../config/auth.js";
 import { useDispatch } from "react-redux";
 import { setTokenData } from "../../app/authSlice.js";
+import { AlertMessageModal } from "./AlertMessageModal.jsx";
+import { setAlertMessage, setLoading } from "../../app/loaderSlice.js";
+import { Loader } from "./Loader.jsx";
 
 const useStyles = makeStyles({
   root: {
@@ -26,9 +25,15 @@ const App = () => {
   React.useEffect(() => {
     const existingRefreshToken = getOfficeKeyValue(officeKeys.refreshToken);
     async function handleRefreshToken() {
-      const newToken = await refreshAccessToken("6f067864-af43-4c81-be6b-cd09a97314d3", existingRefreshToken);
-      dispatchToRedux(setTokenData(newToken));
-      setRefreshToken(newToken.refreshToken);
+      dispatchToRedux(setLoading(true));
+      try {
+        const newToken = await refreshAccessToken("6f067864-af43-4c81-be6b-cd09a97314d3", existingRefreshToken);
+        dispatchToRedux(setTokenData(newToken));
+        setRefreshToken(newToken.refreshToken);
+      } catch (error) {
+        dispatchToRedux(setAlertMessage({ message: error.message, intent: "error" }));
+      }
+      dispatchToRedux(setLoading(false));
     }
     if (existingRefreshToken) {
       handleRefreshToken();
@@ -38,6 +43,8 @@ const App = () => {
   return (
     <div className={styles.root}>
       {!refreshToken ? <AuthorizationUI setRefreshToken={setRefreshToken} /> : <TokenUI />}
+      <AlertMessageModal />
+      <Loader />
     </div>
   );
 };

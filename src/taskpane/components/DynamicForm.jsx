@@ -1,14 +1,46 @@
+/* globals Office, fetch */
 import React, { useState } from "react";
 import CreateWidgetForCardUI from "./CreateFormFunc";
 import PropTypes from "prop-types";
 import { setOfficeKeyValue, officeKeys } from "../../config/utility";
-import { useSelector } from "react-redux";
-/* globals Office, fetch */
+import { useDispatch, useSelector } from "react-redux";
+import { setAlertMessage, setLoading } from "../../app/loaderSlice";
+import { Text, Button, makeStyles } from "@fluentui/react-components";
+
+const useStyles = makeStyles({
+  container: {
+    marginTop: "20px",
+    marginLeft: "10px",
+    display: "flex",
+    flexDirection: "column",
+  },
+  text: {
+    fontSize: "16px",
+    width: "90%",
+    fontFamily: "sans-serif",
+    marginBottom: "5px",
+  },
+  button: {
+    marginTop: "10px",
+    marginLeft: "10px",
+    width: "50%",
+    fontSize: "16px",
+  },
+  title: {
+    fontWeight: "bold",
+    fontFamily: "sans-serif",
+    fontSize: "20px",
+    marginLeft: "10px",
+  },
+});
+
 function DynamicForm(props) {
   const { selectedFormDetails, domain, orgId, setRequestId } = props;
   const [values, setValues] = useState({});
   const [attachmentData, setAttachmentData] = useState({});
   const authData = useSelector((state) => state.auth);
+  const dispatchToRedux = useDispatch();
+  const classes = useStyles();
 
   const updateTextField = (event) => {
     const { name, value } = event.target;
@@ -24,7 +56,6 @@ function DynamicForm(props) {
           setAttachmentData(attachmentContent);
           resolve(attachmentContent);
         } else {
-          // Handle errors
           reject(result.error);
         }
       });
@@ -33,31 +64,41 @@ function DynamicForm(props) {
 
   const handleSubmit = async () => {
     let attachmentContent;
+    dispatchToRedux(setLoading(true));
 
-    if (attachmentData?.id) {
-      attachmentContent = await readData(attachmentData.id);
+    try {
+      if (attachmentData?.id) {
+        attachmentContent = await readData(attachmentData.id);
+      }
+      const payload = {
+        answers: values,
+        formId: selectedFormDetails._id,
+        attachments: attachmentData?.id ? [{ ...attachmentData, ...attachmentContent }] : [],
+        messageId: Office.context.mailbox.item.internetMessageId,
+        subject: Office.context.mailbox.item.subject,
+      };
+
+      const res = await fetch(`${domain}/api/outlook/create-request/${orgId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authData.accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.status == 200) {
+        const data = await res.json();
+        const conversation = Office.context.mailbox.initialData.conversationId;
+        setOfficeKeyValue(conversation, data._id);
+        setRequestId(data._id);
+      } else {
+        const errorData = await res.json();
+        dispatchToRedux(setAlertMessage({ message: errorData.message, intent: "error" }));
+      }
+    } catch (error) {
+      dispatchToRedux(setAlertMessage({ message: error.message, intent: "error" }));
     }
-    const payload = {
-      answers: values,
-      formId: selectedFormDetails._id,
-      attachments: attachmentData?.id ? [{ ...attachmentData, ...attachmentContent }] : [],
-      messageId: Office.context.mailbox.item.internetMessageId,
-      subject: Office.context.mailbox.item.subject,
-    };
-    const res = await fetch(`${domain}/api/outlook/create-request/${orgId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authData.accessToken}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.status == 200) {
-      const data = await res.json();
-      const conversation = Office.context.mailbox.initialData.conversationId;
-      setOfficeKeyValue(conversation, data._id);
-      setRequestId(data._id);
-    }
+    dispatchToRedux(setLoading(false));
   };
 
   const getAttachmentData = (attachment) => {
@@ -66,60 +107,23 @@ function DynamicForm(props) {
 
   return (
     <>
-      <p
-        style={{
-          fontWeight: "bold",
-          fontFamily: "sans-serif",
-          fontSize: "20px",
-          padding: "10px 10px",
-          marginLeft: "10px",
-          border: "1px solid #ccc",
-        }}
-      >
-        {selectedFormDetails.matter} Form
-      </p>{" "}
+      <Text className={classes.title}>{selectedFormDetails.matter} Form</Text>{" "}
       {selectedFormDetails.fields?.length &&
         selectedFormDetails.fields.map((item) => {
           return (
-            <>
-              <div style={{ marginTop: "20px", marginLeft: "10px" }}>
-                <p
-                  style={{
-                    fontSize: "15px",
-                    width: "90%",
-                    fontFamily: "sans-serif",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {item.title}{" "}
-                </p>{" "}
-                <CreateWidgetForCardUI
-                  field={item}
-                  onChange={updateTextField}
-                  values={values}
-                  attachments={Office.context.mailbox.item.attachments}
-                  getAttachmentData={getAttachmentData}
-                />{" "}
-              </div>
-            </>
+            <CreateWidgetForCardUI
+              key={item.title}
+              field={item}
+              onChange={updateTextField}
+              values={values}
+              attachments={Office.context.mailbox.item.attachments}
+              getAttachmentData={getAttachmentData}
+            />
           );
         })}
-      <button
-        style={{
-          marginLeft: "10px",
-          width: "50%",
-          marginTop: "10px",
-          backgroundColor: "white",
-          border: "1px solid #ccc",
-          fontSize: "16px",
-          borderRadius: "2px",
-          padding: "10px 0px",
-          cursor: "pointer",
-        }}
-        onClick={handleSubmit}
-      >
+      <Button appearance="primary" className={classes.button} onClick={handleSubmit}>
         Submit
-      </button>
+      </Button>
     </>
   );
 }

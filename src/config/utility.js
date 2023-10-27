@@ -20,10 +20,12 @@ function getOfficeKeyValue(key) {
 
 function deleteAllKeys() {
   const settings = Office.context.roamingSettings;
-  for (var key in settings) {
-    settings.remove(key);
+  if (settings?.settingsData) {
+    for (var key in settings.settingsData) {
+      settings.remove(key);
+    }
+    settings.saveAsync();
   }
-  settings.saveAsync();
 }
 
 export { setOfficeKeyValue, getOfficeKeyValue, deleteAllKeys, officeKeys };
