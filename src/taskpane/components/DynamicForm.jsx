@@ -44,7 +44,15 @@ function DynamicForm(props) {
 
   const updateTextField = (event) => {
     const { name, value } = event.target;
-    setValues({ ...values, [name]: value });
+    if (event?.target.type === "checkbox") {
+      if (!values[name]) {
+        setValues({ ...values, [name]: [value] });
+      } else if (!values[name].includes(value)) {
+        setValues({ ...values, [name]: [...values[name], value] });
+      }
+    } else {
+      setValues({ ...values, [name]: value });
+    }
   };
   setOfficeKeyValue(officeKeys.selectedFormDetails, JSON.stringify(selectedFormDetails));
 
