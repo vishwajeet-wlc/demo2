@@ -27,7 +27,7 @@ const useStyles = makeStyles({
   },
 });
 
-export default function CreateWidgetForCardUI({ field, onChange, values, attachments, getAttachmentData }) {
+export default function CreateWidgetForCardUI({ field, onChange, values, attachments }) {
   const classes = useStyles();
   switch (field.type) {
     case "text":
@@ -73,7 +73,7 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
             placeholder={field.title}
             name={field._id}
             onChange={onChange}
-            value={values[field._id]}
+            value={values[field._id] ?? ""}
           />
         </div>
       );
@@ -88,7 +88,7 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
             placeholder={field.title}
             name={field._id}
             onChange={onChange}
-            value={values[field._id]}
+            value={values[field._id] ?? ""}
           />
         </div>
       );
@@ -100,15 +100,13 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
           <div>
             {field.options.map((option) => {
               return (
-                <>
-                  <Radio
-                    label={option.value}
-                    key={option.value}
-                    name={field._id}
-                    onChange={onChange}
-                    value={option.value}
-                  />
-                </>
+                <Radio
+                  label={option.value}
+                  key={option._id}
+                  name={field._id}
+                  onChange={onChange}
+                  value={option.value}
+                />
               );
             })}
           </div>
@@ -122,16 +120,14 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
           <div>
             {field.options.map((option) => {
               return (
-                <>
-                  <Checkbox
-                    label={option.value}
-                    key={option.value}
-                    name={field._id}
-                    onChange={onChange}
-                    value={option.value}
-                    as="input"
-                  />
-                </>
+                <Checkbox
+                  label={option.value}
+                  key={option._id}
+                  name={field._id}
+                  onChange={onChange}
+                  value={option.value}
+                  as="input"
+                />
               );
             })}
           </div>
@@ -146,7 +142,7 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
             <option value=""> Select value</option>
             {field.options.map((opt) => {
               return (
-                <option key={opt.value} value={opt.value}>
+                <option key={opt._id} value={opt.value}>
                   {opt.value}
                 </option>
               );
@@ -158,12 +154,15 @@ export default function CreateWidgetForCardUI({ field, onChange, values, attachm
       return (
         <div className={classes.container}>
           <Text className={classes.text}>{field.title}</Text>
-          <Select className={classes.select} name={field._id} placeholder={"Select an attachment"} onChange={onChange}>
+          <Select className={classes.select} name="attachment" placeholder={"Select an attachment"} onChange={onChange}>
             {!attachments.length ? <option> No Attachments </option> : <option> Select Attachment </option>}
             {attachments.length &&
               attachments.map((details) => {
-                getAttachmentData(details);
-                return <option key={details.name}>{details.name}</option>;
+                return (
+                  <option key={details.id} value={details.id}>
+                    {details.name}
+                  </option>
+                );
               })}
           </Select>
         </div>
@@ -178,5 +177,4 @@ CreateWidgetForCardUI.propTypes = {
   onChange: PropTypes.func.isRequired,
   values: PropTypes.object.isRequired,
   attachments: PropTypes.array.isRequired,
-  getAttachmentData: PropTypes.func.isRequired,
 };

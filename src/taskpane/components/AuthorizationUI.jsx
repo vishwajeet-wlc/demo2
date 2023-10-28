@@ -27,7 +27,7 @@ export default function AuthorizationUI({ setRefreshToken }) {
 
   async function handleGetAccessToken() {
     try {
-      const tokenData = await getMicrosoftAccessToken("6f067864-af43-4c81-be6b-cd09a97314d3");
+      const tokenData = await getMicrosoftAccessToken();
       if (tokenData) {
         setOfficeKeyValue(officeKeys.refreshToken, tokenData.refreshToken);
         setRefreshToken(tokenData.refreshToken);

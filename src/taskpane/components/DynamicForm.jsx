@@ -2,10 +2,11 @@
 import React, { useState } from "react";
 import CreateWidgetForCardUI from "./CreateFormFunc";
 import PropTypes from "prop-types";
-import { setOfficeKeyValue, officeKeys } from "../../config/utility";
+import { setOfficeKeyValue } from "../../config/utility";
 import { useDispatch, useSelector } from "react-redux";
 import { setAlertMessage, setLoading } from "../../app/loaderSlice";
 import { Text, Button, makeStyles } from "@fluentui/react-components";
+import { maybeRenewAccessToken } from "../../config/auth";
 
 const useStyles = makeStyles({
   container: {
@@ -50,11 +51,13 @@ function DynamicForm(props) {
       } else if (!values[name].includes(value)) {
         setValues({ ...values, [name]: [...values[name], value] });
       }
+    } else if (name === "attachment") {
+      const attachment = Office.context.mailbox.item.attachments.filter((attachment) => attachment.id === value);
+      setAttachmentData(attachment[0]);
     } else {
       setValues({ ...values, [name]: value });
     }
   };
-  setOfficeKeyValue(officeKeys.selectedFormDetails, JSON.stringify(selectedFormDetails));
 
   const readData = (attachmentId) => {
     return new Promise((resolve, reject) => {
@@ -75,6 +78,8 @@ function DynamicForm(props) {
     dispatchToRedux(setLoading(true));
 
     try {
+      await maybeRenewAccessToken();
+
       if (attachmentData?.id) {
         attachmentContent = await readData(attachmentData.id);
       }
@@ -109,10 +114,6 @@ function DynamicForm(props) {
     dispatchToRedux(setLoading(false));
   };
 
-  const getAttachmentData = (attachment) => {
-    setAttachmentData(attachment);
-  };
-
   return (
     <>
       <Text className={classes.title}>{selectedFormDetails.matter} Form</Text>{" "}
@@ -120,12 +121,12 @@ function DynamicForm(props) {
         selectedFormDetails.fields.map((item) => {
           return (
             <CreateWidgetForCardUI
-              key={item.title}
+              key={item._id}
               field={item}
               onChange={updateTextField}
               values={values}
               attachments={Office.context.mailbox.item.attachments}
-              getAttachmentData={getAttachmentData}
+              setAttachmentData={setAttachmentData}
             />
           );
         })}

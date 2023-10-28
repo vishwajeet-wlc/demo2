@@ -5,6 +5,7 @@ import { getOfficeKeyValue, officeKeys } from "../../config/utility";
 import { useDispatch, useSelector } from "react-redux";
 import { Text, Input, Select, Button, makeStyles } from "@fluentui/react-components";
 import { setAlertMessage, setLoading } from "../../app/loaderSlice";
+import { maybeRenewAccessToken } from "../../config/auth";
 /* global Office, fetch */
 
 const useStyles = makeStyles({
@@ -51,6 +52,7 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
   useEffect(() => {
     async function fetchStatus() {
       dispatchToRedux(setLoading(true));
+      await maybeRenewAccessToken();
       try {
         const res = await fetch(`${clientDomain}/api/outlook/get-request/${reqId}`, {
           headers: {
@@ -184,9 +186,9 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
           <div style={{ marginLeft: "10px" }}>
             {questions.fields.map((quest) => {
               return (
-                <>
+                <div key={quest.title}>
                   {quest.type == "attachment" ? (
-                    <div key={quest.title}>
+                    <div>
                       <label
                         htmlFor="name"
                         style={{
@@ -199,7 +201,7 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
                       <br />
                     </div>
                   ) : (
-                    <div key={quest.title}>
+                    <div>
                       <div style={{ marginTop: "20px" }}>
                         <label
                           htmlFor="name"
@@ -226,7 +228,7 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
                       )}
                     </div>
                   )}
-                </>
+                </div>
               );
             })}
             <label

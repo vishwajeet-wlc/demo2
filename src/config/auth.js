@@ -1,4 +1,6 @@
-/* global window, clearInterval, setInterval, fetch, console, crypto */
+/* global window, clearInterval, setInterval, fetch, crypto */
+import store from "../app/store";
+import { config } from "./config";
 
 function bytesToBase64Url(bytes) {
   return window
@@ -16,13 +18,13 @@ async function getOauthParams() {
   return { state, codeChallenge, codeVerifier };
 }
 
-async function getMicrosoftAccessToken(clientId) {
-  const redirectUri = "https://localhost:3010/taskpane.html";
+async function getMicrosoftAccessToken() {
+  const redirectUri = `${config.addon_domain}/taskpane.html`;
   const { codeChallenge, codeVerifier, state } = await getOauthParams();
   // Base Authentication URL for OneDrive and SharePoint.
   const url = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/authorize");
   url.search = new URLSearchParams({
-    client_id: clientId,
+    client_id: config.clientId,
     scope: "openid user.read offline_access",
     redirect_uri: redirectUri,
     response_type: "code",
@@ -59,7 +61,7 @@ async function getMicrosoftAccessToken(clientId) {
 
   // Extract OAuth callback parameters from the popup window URL.
   const oauthParams = Object.fromEntries(new URLSearchParams(popupWindow.location.search));
-  console.log(oauthParams, "oauthParams");
+
   if (oauthParams.state !== state) {
     throw new Error("OAuth state mismatch");
   }
@@ -70,7 +72,7 @@ async function getMicrosoftAccessToken(clientId) {
     method: "POST",
     body: new URLSearchParams({
       grant_type: "authorization_code",
-      client_id: clientId,
+      client_id: config.clientId,
       code: oauthParams.code,
       code_verifier: codeVerifier,
       redirect_uri: redirectUri,
@@ -90,28 +92,37 @@ async function getMicrosoftAccessToken(clientId) {
   };
 }
 
-async function refreshAccessToken(clientId, refreshToken) {
+async function refreshAccessToken(refreshToken) {
   const response = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
     method: "POST",
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      client_id: clientId,
+      client_id: config.clientId,
       refresh_token: refreshToken,
-      redirect_uri: "https://localhost:3010/taskpane.html",
+      redirect_uri: `${config.addon_domain}/taskpane.html`,
     }),
   });
 
   if (response.ok) {
     const tokenResult = await response.json();
-    console.log(tokenResult);
     return {
       accessToken: tokenResult.access_token,
       refreshToken: tokenResult.refresh_token,
       expiresAt: Date.now() + tokenResult.expires_in * 1_000 - 5 * 60_000,
     };
-  } else {
-    console.log(await response.json());
   }
 }
 
-export { getMicrosoftAccessToken, refreshAccessToken };
+async function maybeRenewAccessToken() {
+  const tokenData = store.getState().auth;
+  if (tokenData.accessToken && tokenData.expiresAt > Date.now()) {
+    return;
+  }
+  try {
+    await refreshAccessToken(tokenData.refreshToken);
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+
+export { getMicrosoftAccessToken, refreshAccessToken, maybeRenewAccessToken };

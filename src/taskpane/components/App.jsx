@@ -21,13 +21,12 @@ const App = () => {
   const styles = useStyles();
   const [refreshToken, setRefreshToken] = React.useState("");
   const dispatchToRedux = useDispatch();
-
   React.useEffect(() => {
     const existingRefreshToken = getOfficeKeyValue(officeKeys.refreshToken);
-    async function handleRefreshToken() {
+    async function handleRefreshToken(refreshToken) {
       dispatchToRedux(setLoading(true));
       try {
-        const newToken = await refreshAccessToken("6f067864-af43-4c81-be6b-cd09a97314d3", existingRefreshToken);
+        const newToken = await refreshAccessToken(refreshToken);
         dispatchToRedux(setTokenData(newToken));
         setRefreshToken(newToken.refreshToken);
       } catch (error) {
@@ -36,7 +35,7 @@ const App = () => {
       dispatchToRedux(setLoading(false));
     }
     if (existingRefreshToken) {
-      handleRefreshToken();
+      handleRefreshToken(existingRefreshToken);
     }
   }, []);
 

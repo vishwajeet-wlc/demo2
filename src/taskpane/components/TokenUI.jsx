@@ -6,6 +6,7 @@ import { setOfficeKeyValue, getOfficeKeyValue, officeKeys } from "../../config/u
 import { useDispatch, useSelector } from "react-redux";
 import { Text, Label, Button, makeStyles, Input } from "@fluentui/react-components";
 import { setAlertMessage, setLoading } from "../../app/loaderSlice.js";
+import { maybeRenewAccessToken } from "../../config/auth.js";
 
 const useStyles = makeStyles({
   root: {
@@ -79,6 +80,7 @@ function TokenUI() {
 
     try {
       dispatchToRedux(setLoading(true));
+      await maybeRenewAccessToken();
       const options = {
         method: "POST",
         headers: {
@@ -126,6 +128,7 @@ function TokenUI() {
   async function fetchAndSaveStreamlineForms(clientDomain, orgId) {
     try {
       dispatchToRedux(setLoading(true));
+      await maybeRenewAccessToken();
       const response = await fetch(`${clientDomain}/api/outlook/request-forms/${orgId}`, {
         headers: {
           Authorization: `Bearer ${authData.accessToken}`,
