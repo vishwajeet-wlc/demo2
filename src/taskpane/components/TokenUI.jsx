@@ -94,23 +94,21 @@ function TokenUI() {
       };
       const response = await fetch(`${clientDomain}/api/outlook/validate`, options);
 
-      if (response.status === 400) {
-        return dispatchToRedux(setAlertMessage({ message: "Invalid Client Token.", intent: "error" }));
-      }
-
-      if (response.status === 401) {
-        return dispatchToRedux(
+      if (response.ok) {
+        const formData = await response.json();
+        setFormTypes([...formData]);
+        setOfficeKeyValue(officeKeys.requestForms, JSON.stringify(formData));
+      } else if (response.status === 400) {
+        dispatchToRedux(setAlertMessage({ message: "Invalid Client Token.", intent: "error" }));
+      } else if (response.status === 401) {
+        dispatchToRedux(
           setAlertMessage({
             message: "Please sign in to Streamline using your Google account to continue.",
             intent: "error",
           })
         );
-      }
-
-      if (response.status !== 204) {
-        return dispatchToRedux(
-          setAlertMessage({ message: "Please check the client token and domain.", intent: "error" })
-        );
+      } else if (response.status !== 204) {
+        dispatchToRedux(setAlertMessage({ message: "Please check the client token and domain.", intent: "error" }));
       }
 
       setOfficeKeyValue(officeKeys.clientToken, clientToken);

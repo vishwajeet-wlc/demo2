@@ -42,6 +42,7 @@ const useStyles = makeStyles({
 
 function RequestStatus({ reqId, clientToken, clientDomain }) {
   const [requestDetail, setRequestDetail] = useState(null);
+  const [requestForm, setRequestForm] = useState(null);
   const [status, setStatus] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const authData = useSelector((state) => state.auth);
@@ -72,7 +73,14 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
       fetchStatus();
     }
   }, [requestDetail, reqId, clientDomain]);
-  const questions = JSON.parse(getOfficeKeyValue(officeKeys.selectedFormDetails));
+
+  useEffect(() => {
+    if (requestDetail && !requestForm) {
+      const requestForms = JSON.parse(getOfficeKeyValue(officeKeys.requestForms));
+      const selectedForm = requestForms.filter((form) => form.formId === requestDetail.formId);
+      setRequestForm(selectedForm[0]);
+    }
+  }, [requestDetail]);
 
   const handleChange = async (e) => {
     dispatchToRedux(setLoading(true));
@@ -180,11 +188,11 @@ function RequestStatus({ reqId, clientToken, clientDomain }) {
 
   return (
     <>
-      {requestDetail && !isOpen && (
+      {requestDetail && requestForm && !isOpen && (
         <>
           <Text className={classes.text}>{requestDetail.matter}</Text>
           <div style={{ marginLeft: "10px" }}>
-            {questions.fields.map((quest) => {
+            {requestForm.fields.map((quest) => {
               return (
                 <div key={quest.title}>
                   {quest.type == "attachment" ? (
