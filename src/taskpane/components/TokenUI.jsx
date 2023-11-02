@@ -94,11 +94,7 @@ function TokenUI() {
       };
       const response = await fetch(`${clientDomain}/api/outlook/validate`, options);
 
-      if (response.ok) {
-        const formData = await response.json();
-        setFormTypes([...formData]);
-        setOfficeKeyValue(officeKeys.requestForms, JSON.stringify(formData));
-      } else if (response.status === 400) {
+      if (response.status === 400) {
         dispatchToRedux(setAlertMessage({ message: "Invalid Client Token.", intent: "error" }));
       } else if (response.status === 401) {
         dispatchToRedux(
@@ -132,20 +128,20 @@ function TokenUI() {
           Authorization: `Bearer ${authData.accessToken}`,
         },
       });
-      const formData = await response.json();
-      setFormTypes([...formData]);
 
-      if (response.status === 400) {
-        return dispatchToRedux(
+      if (response.ok) {
+        const formData = await response.json();
+        setFormTypes([...formData]);
+        setOfficeKeyValue(officeKeys.requestForms, JSON.stringify(formData));
+      } else if (response.status === 400) {
+        dispatchToRedux(
           setAlertMessage({
             message: "Ensure integration is enabled and log in with your microsoft account in Streamline.",
             intent: "error",
           })
         );
-      }
-
-      if (response.status === 401) {
-        return dispatchToRedux(
+      } else if (response.status === 401) {
+        dispatchToRedux(
           setAlertMessage({
             message: "Please sign in to Streamline using your Google account to continue.",
             intent: "error",
