@@ -55,7 +55,6 @@ async function getMicrosoftAccessToken() {
     function cleanup() {
       window.removeEventListener("message", onMessage);
       clearInterval(intervalId);
-      window.sessionStorage.removeItem("isTokenRequest");
     }
   });
 
